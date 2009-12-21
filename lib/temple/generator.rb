@@ -9,7 +9,7 @@ module Temple
     end
     
     def compile(exp)
-      preamble + compile_part(exp) + postamble
+      preamble + ';' + compile_part(exp) + ';' + postamble
     end
     
     def compile_part(exp)
@@ -25,8 +25,8 @@ module Temple
     def preamble;  '' end
     def postamble; '' end
     
-    def on_multi(*exp)
-      exp.map { |e| compile_part(e) }.join
+    def on_lines(*lines)
+      lines.map { |line| line.map { |exp| compile_part(exp) }.join(";") }.join("\n")
     end
   end
 end
