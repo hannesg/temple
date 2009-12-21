@@ -12,25 +12,29 @@ module Temple
     #     [:static, "Hello World!"]]
     class StaticMerger
       def compile(exp)
-        exp.first == :multi ? on_multi(*exp[1..-1]) : exp
+        exp.first == :lines ? on_lines(*exp[1..-1]) : exp
       end
-
-      def on_multi(*exps)
-        res = [:multi]
+      
+      def on_lines(*lines)
+        res = [:lines]
+        curr_line = nil
         curr = nil
         state = :looking
         
-        exps.each do |exp|
-          if exp.first == :static
-            if state == :looking
-              res << [:static, (curr = exp[1].dup)]
-              state = :static
+        lines.each do |line|
+          res << (curr_line = [])
+          line.each do |exp|
+            if exp.first == :static
+              if state == :looking
+                curr_line << [:static, (curr = exp[1].dup)]
+                state = :static
+              else
+                curr << exp[1]
+              end
             else
-              curr << exp[1]
+              curr_line << compile(exp)
+              state = :looking
             end
-          else
-            res << compile(exp)
-            state = :looking
           end
         end
         
