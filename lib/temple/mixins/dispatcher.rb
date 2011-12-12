@@ -41,6 +41,9 @@ module Temple
 
     # @api private
     module CompiledDispatcher
+    
+      include Utils
+      
       def call(exp)
         compile(exp)
       end
@@ -51,40 +54,63 @@ module Temple
 
       private
 
-      def case_statement(types, level)
+      def case_statement(types, level, default = nil)
         code = "case exp[#{level}]\n"
         types.each do |name, method|
           code << "when #{name.to_sym.inspect}\n" <<
-            (Hash === method ? case_statement(method, level + 1) : "#{method}(*(exp[#{level+1}..-1]))\n")
+            (Hash === method ? case_statement(method, level + 1, default) : "on_#{method.join('_')}(*(exp[#{level+1}..-1]))\n")
         end
-        code << "else\nexp\nend\n"
+        if default
+          code << "else\n#{default}(*exp)\nend\n"
+        else
+          code << "else\nexp\nend\n"
+        end
       end
 
       def dispatcher(exp)
         replace_dispatcher(exp)
       end
-
-      def replace_dispatcher(exp)
+      
+      # Creates a tree from a list of symbol arrays.
+      # 
+      # @example
+      #   Utils.dispatch_tree([:foo], [:bar, :baz]) #=> {:foo=>[:foo],:bar=>{:baz=>[:bar,:baz]}}
+      # 
+      def dispatch_tree(*args)
         types = {}
+        args.each do |arg|
+          if arg.kind_of?(Symbol)
+            if types[arg].kind_of? Hash
+              raise ArgumentError, "#{arg.inspect} conflicts with #{types[arg].inspect}"
+            end
+            types[arg] = [arg]
+          elsif arg.kind_of?(Array) and arg.all?{|x| x.kind_of? Symbol } and arg.size > 0
+            last = arg.last
+            last_types = arg[0..-2].inject(types){|memo, sym|
+              case(memo[sym])
+                when Hash then memo[sym]
+                when Array then raise ArgumentError, "#{arg.inspect} conflicts with #{memo[sym].inspect}"
+                when nil then memo[sym] = {}
+              end
+            }
+            last_types[last] = arg
+          else
+            raise ArgumentError, "Expected a symbol or an array of symbols, but got #{arg.inspect}."
+          end
+        end
+        return types
+      end
+      
+      def replace_dispatcher(exp)
+        methods = []
         self.class.instance_methods.each do |method|
           next if method.to_s !~ /^on_(.*)$/
-          method_types = $1.split('_')
-          (0...method_types.size).inject(types) do |tmp, i|
-            unless Hash === tmp
-              conflict = method_types[0...i].join('_')
-              raise "Temple dispatcher '#{method}' conflicts with 'on_#{conflict}'"
-            end
-            if i == method_types.size - 1
-              tmp[method_types[i]] = method
-            else
-              tmp[method_types[i]] ||= {}
-            end
-          end
+          methods << $1.split('_').map(&:to_sym)
         end
         self.class.class_eval %{
           def dispatcher(exp)
             if self.class == #{self.class}
-              #{case_statement(types, 0)}
+              #{case_statement(dispatch_tree(*methods), 0, self.respond_to?(:unknow) ? 'unknown' : nil )}
             else
               replace_dispatcher(exp)
             end

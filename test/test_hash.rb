@@ -25,6 +25,10 @@ describe Temple::ImmutableHash do
   it 'has to_a' do
     Temple::ImmutableHash.new({:a => 1},{:b => 2, :a => 3}).to_a.should.equal [[:a, 1], [:b, 2]]
   end
+
+  it 'has to_h' do
+    Temple::ImmutableHash.new({:a => 1},{:b => 2, :a => 3}).to_hash.should == {:a => 1, :b=> 2}
+  end
 end
 
 describe Temple::MutableHash do

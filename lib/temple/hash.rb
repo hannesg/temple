@@ -28,6 +28,12 @@ module Temple
     def values
       keys.map {|k| self[k] }
     end
+
+    def to_hash
+      @hash.inject({}) do |memo,hash|
+        (hash.kind_of?(Hash) ? hash : hash.to_hash).merge(memo)
+      end
+    end
   end
 
   # Mutable hash class which supports hash merging

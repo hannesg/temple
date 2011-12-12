@@ -87,7 +87,7 @@ describe Temple::Filters::EmbeddedEngine do
       Temple::Filters::EmbeddedEngine.register 'bar', :bar
 
       filter = Temple::Filters::EmbeddedEngine.new() do
-	deny 'bar'
+        deny 'bar'
       end
 
       filter.options[:engines]['foo'].should == :foo
@@ -100,7 +100,7 @@ describe Temple::Filters::EmbeddedEngine do
  
       filter = Temple::Filters::EmbeddedEngine.new do
 
-	wrap 'foo', Temple::Filters::EmbeddedEngine::WrapTagEngine.new(:tag=>'foo')
+        wrap 'foo', Temple::Filters::EmbeddedEngine::WrapTagEngine.new(:tag=>'foo')
 
       end
 
@@ -129,27 +129,12 @@ describe Temple::Filters::EmbeddedEngine do
   describe "wrapping" do
 
     it "should be possible to wrap an arbitrary engine in an html tag" do
-	filter = Temple::Filters::EmbeddedEngine.new do
-	
-		register 'wruby', Temple::Filters::EmbeddedEngine::WrapTagEngine.new( :engine => Temple::Filters::EmbeddedEngine::CodeEngine.new, :tag=> 'ruby', :attributes => {:foo => 'bar'} )
-	end
-
-	filter.call([:embedded, :engine, 'wruby', [:multi, [:static, "bar"]]]).should == [:html, :tag , 'ruby', [:html, :attrs, [:html, :attr, 'foo', [:static, 'bar']]], [:code, 'bar']]
-
-    end
-
-  end  
-
-  describe "expression protection" do
-
-    it "should work" do
-      
-      content = [:multi, [:newline],[:static, 'foo'], [:bar],[:static,'baz']]
-      ex = Temple::Filters::EmbeddedEngine::Extractor.new(content)
-      result = ex.protecting_expressions do |text|
-	text
+      filter = Temple::Filters::EmbeddedEngine.new do
+        register 'wruby', Temple::Filters::EmbeddedEngine::WrapTagEngine.new( :engine => Temple::Filters::EmbeddedEngine::CodeEngine.new, :tag=> 'ruby', :attributes => {:foo => 'bar'} )
       end
-      result.should == [:multi, [:static, "foo"], [:bar], [:static, 'baz']]
+
+      filter.call([:embed, 'wruby', [:multi, [:static, "bar"]]]).should == [:html, :tag , 'ruby', [:html, :attrs, [:html, :attr, 'foo', [:static, 'bar']]], [:code, 'bar']]
+
     end
 
   end
@@ -162,7 +147,19 @@ describe Temple::Filters::EmbeddedEngine do
     
     end
     
-    filter.call([:embedded, :engine, 'ruby',[:multi, [:static, "foo\nbar"]]]).should == [:code, "foo\nbar"]
+    filter.call([:embed, 'ruby',[:multi, [:static, "foo\nbar"]]]).should == [:code, "foo\nbar"]
+  
+  end
+  
+  it "should protect expressions in tilt engines" do
+  
+    filter = Temple::Filters::EmbeddedEngine.new do
+    
+      register 'markdown', Temple::Filters::EmbeddedEngine::ProtectingTiltEngine.new
+    
+    end
+    
+    filter.call([:embed, 'markdown',[:multi, [:static, "foo\nbar"],[:dynamic,"1+2"]]]).should == [:multi]
   
   end
   
