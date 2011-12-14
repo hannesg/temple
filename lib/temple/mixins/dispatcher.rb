@@ -67,7 +67,7 @@ module Temple
       def replace_dispatcher(exp)
         types = {}
         self.class.instance_methods.each do |method|
-          next if method.to_s !~ /^on_(.*)$/
+          next unless method.to_s =~ /^on_(.*)$/
           method_types = $1.split('_')
           (0...method_types.size).inject(types) do |tmp, i|
             unless Hash === tmp
