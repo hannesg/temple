@@ -24,6 +24,8 @@ module Temple
       [:block, String, Expression]             |
       [:case, String, 'Case*']                 |
       [:cond, 'Case*']                         |
+      # embeds
+      [:embed, String, Expression]             |
       # Escape abstraction
       [:escape, Bool, Expression]              |
       # HTML abstraction
