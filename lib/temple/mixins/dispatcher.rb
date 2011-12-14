@@ -21,6 +21,13 @@ module Temple
     end
 
     # @api private
+    module EmbedDispatcher
+      def on_embed(name, exp)
+        [:embed, name, compile(exp)]
+      end
+    end
+
+    # @api private
     module ControlFlowDispatcher
       def on_if(condition, *cases)
         [:if, condition, *cases.compact.map {|e| compile(e) }]
@@ -126,6 +133,7 @@ module Temple
       include CoreDispatcher
       include EscapeDispatcher
       include ControlFlowDispatcher
+      include EmbedDispatcher
     end
   end
 end
