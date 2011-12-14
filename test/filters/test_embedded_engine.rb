@@ -1,136 +1,163 @@
 require 'helper'
 
 describe Temple::Filters::EmbeddedEngine do
+
+  class SimpleTestEngine < Temple::Engine
+  
+    class Parser
+    
+      include Temple::Mixins::Options
+    
+      def call(exp)
+        return [:static, exp.to_s ]
+      end
+      
+    end
+    
+    use Parser
+  
+    generator :ArrayBuffer
+  
+  end
+  
+  Temple::Templates::Tilt(SimpleTestEngine, :register_as => '__ste__')
+
   before do
     @filter = Temple::Filters::EmbeddedEngine.new
   end
   
   describe "globaly registered engines" do
   
+    class ShadyEmbeddedEngine < Temple::Filters::BareEmbeddedEngine
+    
+    end
+  
+    before do
+      ShadyEmbeddedEngine.reset_engines!
+    end
+  
     it "should be used" do
     
-      Temple::Filters::EmbeddedEngine.register 'ruby', :foo
+      ShadyEmbeddedEngine.register 'ruby', :foo
       
-      filter = Temple::Filters::EmbeddedEngine.new
+      filter = ShadyEmbeddedEngine.new
       
-      filter.options[:engines]['ruby'].should == :foo
+      filter.engine('ruby').should == [:foo]
     
     end
     
     it "should be used even if added later" do
     
-      Temple::Filters::EmbeddedEngine.register 'ruby', :foo
+      ShadyEmbeddedEngine.register 'ruby', :foo
       
-      filter = Temple::Filters::EmbeddedEngine.new
+      filter = ShadyEmbeddedEngine.new
       
-      Temple::Filters::EmbeddedEngine.register 'baz', :bar
+      ShadyEmbeddedEngine.register 'baz', :bar
       
-      filter.options[:engines]['baz'].should == :bar
+      filter.engine('baz').should == [:bar]
     
     end
     
     it "should be overrideable" do
     
-      Temple::Filters::EmbeddedEngine.register 'ruby', :foo
+      ShadyEmbeddedEngine.register 'ruby', :foo
       
-      filter = Temple::Filters::EmbeddedEngine.new( :engines => {'ruby' => nil, 'foo' => :foo} )
+      filter = ShadyEmbeddedEngine.new( :engines => {'ruby' => nil, 'foo' => :TiltEngine} )
       
-      filter.options[:engines]['ruby'].should == nil
-      filter.options[:engines]['foo'].should == :foo
+      filter.engine('ruby').should == nil
+      filter.engine('foo').should == [Temple::Filters::EmbeddedEngine::TiltEngine]
     
     end
     
     it "should be overrideable with blocks" do
     
-      Temple::Filters::EmbeddedEngine.register 'ruby', :foo
+      ShadyEmbeddedEngine.register 'ruby', :foo
       
-      filter = Temple::Filters::EmbeddedEngine.new do
+      filter = ShadyEmbeddedEngine.new do
         
-        register 'ruby', nil
+        replace 'ruby', :baz
         
         register 'foo', :foo
         
       end
       
-      filter.options[:engines]['ruby'].should == nil
-      filter.options[:engines]['foo'].should == :foo
+      filter.engine('ruby').should == [:baz]
+      filter.engine('foo').should == [:foo]
     
     end
   
     it "should be possible to completly ignore global engines" do
 
-      Temple::Filters::EmbeddedEngine.register 'foo', :foo
+      ShadyEmbeddedEngine.register 'foo', :foo
 
-      filter = Temple::Filters::EmbeddedEngine.new(:use_global_engines => false)
+      filter = ShadyEmbeddedEngine.new(:use_global_engines => false)
 
-      filter.options[:engines]['foo'].should.be.nil
+      filter.engine('foo').should.be.nil
 
     end
 
     it "should be able to allow global engines selectivly" do
 
-      Temple::Filters::EmbeddedEngine.register 'foo', :foo
-      Temple::Filters::EmbeddedEngine.register 'bar', :bar
+      ShadyEmbeddedEngine.register 'foo', :foo
+      ShadyEmbeddedEngine.register 'bar', :bar
 
-      filter = Temple::Filters::EmbeddedEngine.new(:use_global_engines => false) do
-	allow 'foo'
+      filter = ShadyEmbeddedEngine.new(:use_global_engines => false) do
+        enable 'foo'
       end
 
-      filter.options[:engines]['foo'].should == :foo
-      filter.options[:engines]['bar'].should.be.nil
+      filter.engine('foo').flatten.should == [:foo]
+      filter.engine('bar').should.be.nil
 
     end
  
     it "should be able to deny global engines selectivly" do
 
-      Temple::Filters::EmbeddedEngine.register 'foo', :foo
-      Temple::Filters::EmbeddedEngine.register 'bar', :bar
+      ShadyEmbeddedEngine.register 'foo', :foo
+      ShadyEmbeddedEngine.register 'bar', :bar
 
-      filter = Temple::Filters::EmbeddedEngine.new() do
-        deny 'bar'
+      filter = ShadyEmbeddedEngine.new() do
+        disable 'bar'
       end
 
-      filter.options[:engines]['foo'].should == :foo
-      filter.options[:engines]['bar'].should.be.nil
+      filter.engine('foo').should == [:foo]
+      filter.engine('bar').should.be.nil
 
     end
     it "should be wrappable" do
 
-      Temple::Filters::EmbeddedEngine.register 'foo',:fooo
+      ShadyEmbeddedEngine.register 'foo',:fooo
  
-      filter = Temple::Filters::EmbeddedEngine.new do
+      filter = ShadyEmbeddedEngine.new do
 
-        wrap 'foo', Temple::Filters::EmbeddedEngine::WrapTagEngine.new(:tag=>'foo')
+        wrap 'foo', Temple::Filters::EmbeddedEngine::WrapTagEngine
 
       end
 
-      filter.options[:engines]['foo'].inner.should == Temple::Filters::EmbeddedEngine.engine('foo')
-
-   end
- 
-  end
-  
-  describe "inside an engine" do
-  
-    it "should be awesome" do
-    
-      class FooEngine < Temple::Engine
-      
-        filter :EmbeddedEngine
-      
-      end
-    
-
+      filter.engine('foo').flatten.should == [Temple::Filters::EmbeddedEngine::WrapTagEngine, :fooo]
 
     end
-  
+   
+    it "should be able to replace the engine in a subclass" do
+   
+      ShadyEmbeddedEngine.register 'foo', Temple::Filters::EmbeddedEngine::WrapTagEngine, Temple::Filters::EmbeddedEngine::Engine
+      
+      klass = Class.new(ShadyEmbeddedEngine) do
+      
+        register 'foo', Temple::Filters::EmbeddedEngine::TiltEngine
+      
+      end
+      
+      klass.engine('foo').should == [Temple::Filters::EmbeddedEngine::TiltEngine, [Temple::Filters::EmbeddedEngine::WrapTagEngine, Temple::Filters::EmbeddedEngine::Engine]]
+   
+    end
+ 
   end
 
   describe "wrapping" do
 
     it "should be possible to wrap an arbitrary engine in an html tag" do
       filter = Temple::Filters::EmbeddedEngine.new do
-        register 'wruby', Temple::Filters::EmbeddedEngine::WrapTagEngine.new( :engine => Temple::Filters::EmbeddedEngine::CodeEngine.new, :tag=> 'ruby', :attributes => {:foo => 'bar'} )
+        register 'wruby', Temple::Filters::EmbeddedEngine::WrapTagEngine, Temple::Filters::EmbeddedEngine::CodeEngine, :tag=> 'ruby', :attributes => {:foo => 'bar'}
       end
 
       filter.call([:embed, 'wruby', [:multi, [:static, "bar"]]]).should == [:html, :tag , 'ruby', [:html, :attrs, [:html, :attr, 'foo', [:static, 'bar']]], [:code, 'bar']]
@@ -138,31 +165,72 @@ describe Temple::Filters::EmbeddedEngine do
     end
 
   end
-
-  it "should generate ruby code" do
   
-    filter = Temple::Filters::EmbeddedEngine.new do
+  describe "tilt" do
+  
+    it "should be able to use a precompiled engine" do
     
-      register 'ruby', Temple::Filters::EmbeddedEngine::CodeEngine.new
+      filter = Temple::Filters::EmbeddedEngine.new do
+        register '__ste__', Temple::Filters::EmbeddedEngine::PrecompiledTiltEngine
+      end
+    
+      filter.call([:embed, '__ste__',[:multi, [:static, "foo\nbar"]]]).should == [:dynamic, SimpleTestEngine.new.call("foo\nbar") ]
+      
+    end
+    
+    it "should be able to use a non-precompiling engine" do
+    
+      filter = Temple::Filters::EmbeddedEngine.new do
+        register '__ste__', Temple::Filters::EmbeddedEngine::TiltEngine
+      end
+    
+      # Okay, this condition looks too trivial. Maybe add other Tilt engines??
+      filter.call([:embed, '__ste__',[:multi, [:static, "foo"],[:newline],[:static,"bar"]]]).should == [:multi, [:static, "foobar"], [:newline]]
+      
+    end
+  
+  end
+
+  describe Temple::Filters::EmbeddedEngine::CodeEngine do
+  
+    before do
+      @code_engine = Temple::Filters::EmbeddedEngine::CodeEngine.new
+    end
+  
+    it "should generate ruby code" do
+      @code_engine.call( 'ruby',[:multi, [:static, "foo\n"],[:newline],[:static,"bar"]]).should == [:code, "foo\nbar"]
+    end
+    
+    it "should add preceding newlines if they were present in the original content but not the resulting code" do
+      
+      # two :newline, but code will have only one:
+      content = [:multi, [:newline], [:static, "a = 1"], [:newline], [:static, "\nmissing!"]]
+      result = @code_engine.call("ruby", content)
+      result.should == [:multi, [:newline], [:code, "a = 1\nmissing!"]]
     
     end
     
-    filter.call([:embed, 'ruby',[:multi, [:static, "foo\nbar"]]]).should == [:code, "foo\nbar"]
-  
+    it "should add succeding newlines if they were present in the original content but not the resulting code" do
+      
+      # two :newline, but code will have only one:
+      content = [:multi, [:static, "a = 1"], [:newline], [:static, "\nmissing!"], [:newline]]
+      result = @code_engine.call("ruby", content)
+      result.should == [:multi, [:code, "a = 1\nmissing!"], [:newline]]
+    
+    end
+    
   end
   
   it "should protect expressions in tilt engines" do
   
     filter = Temple::Filters::EmbeddedEngine.new do
     
-      register 'markdown', Temple::Filters::EmbeddedEngine::ProtectingTiltEngine.new
+      register '__ste__', Temple::Filters::EmbeddedEngine::WrapMaskEngine, Temple::Filters::EmbeddedEngine::TiltEngine
     
     end
     
-    filter.call([:embed, 'markdown',[:multi, [:static, "foo\nbar"],[:dynamic,"1+2"]]]).should == [:multi]
+    filter.call([:embed, '__ste__',[:multi, [:static, "foo\nbar"],[:foo]]]).should == [:multi, [:static, "foo\nbar"],[:foo]]
   
   end
-  
-  
   
 end

@@ -115,9 +115,37 @@ module Temple
       # A filter which simply ignores dynamics.
       class IgnoreDynamic < self
       
+        NEWLINE = "\n"
+      
       protected
-        def non_static(_)
-          return nil
+        def non_static(tree)
+          return slurp_newlines(tree)
+        end
+        
+        def slurp_newlines(tree, stack = [])
+          if tree[0] == :newline
+            stack << on_newline
+          elsif tree[0] == :dynamic or tree[0] == :code
+            tree[1].lines.each do |line|
+              if line != NEWLINE
+                on_static('')
+              end
+              if line[-1,1] == NEWLINE
+                stack << on_newline
+              end
+            end
+          else
+            tree[1..-1].each do |x|
+              if x.kind_of?(Array)
+                slurp_newlines(x, stack)
+              end
+            end
+          end
+          return case(stack.size)
+            when 0 then nil
+            when 1 then stack[0]
+            else [:multi, *stack]
+          end
         end
       
       end
@@ -125,14 +153,20 @@ module Temple
       # List of all static expression. They are guaranted to be in the order of their appereance.
       attr_reader :statics
       
-      # List of all newline expression. They are guaranted to be in the order of their appereance.
+      # Number of newline expression.
       attr_reader :newlines
+      
+      attr_reader :preceding_newlines
+      
+      attr_reader :succeding_newlines
 
       # Resets {#statics}, {#newlines} and {#text}.
       # This method is called automatically before each call.
       def reset!
         @statics = []
-        @newlines = []
+        @newlines = 0
+        @preceding_newlines = 0
+        @succeding_newlines = 0
       end
 
       # The joined text of all encountered statics.
@@ -145,6 +179,27 @@ module Temple
         inner_call(*content)
       end
 
+      def recover_newlines(*tree)
+        os = IgnoreDynamic.new
+        os.call(*tree)
+        if os.newlines >= newlines
+          if os.newlines > newlines
+            #IEEKKKKKKKKKSSSS
+            warn "New tree has more newlines than original one ( #{os.newlines} instead of #{newlines} ). See yourself: \n#{tree.inspect}"
+          end
+          # okay, nothing to do
+          return tree
+        else
+          pre = [0, preceding_newlines - os.preceding_newlines].max
+          suc = [0, newlines - os.newlines - pre ].max
+          multi = [:multi]
+          multi.push( *([[:newline]]*pre) )
+          multi.push( tree )
+          multi.push( *([[:newline]]*suc) )
+          return multi
+        end
+      end
+
     protected
     
       def inner_call(*content)
@@ -153,18 +208,31 @@ module Temple
         when :multi then
           return [:multi, *content[1..-1].map{|token| inner_call(*token) }.compact]
         when :static then
-          @statics << content
-          return content
+          return on_static( content[1] )
         when :newline then
-          @newlines << content
-          return content
+          return on_newline
         else
           return non_static(content)
         end
       end
-    
+      
       def non_static(content)
         raise NotImplemented, "#{self.class}.non_static is not implemented. Please do so!"
+      end
+      
+      def on_newline
+        if @statics.empty?
+          @preceding_newlines += 1
+        end
+        @newlines += 1
+        @succeding_newlines += 1
+        return [:newline]
+      end
+      
+      def on_static(body)
+        @succeding_newlines = 0
+        @statics << [:static, body]
+        return [:static, body]
       end
       
     end

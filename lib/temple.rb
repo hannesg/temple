@@ -38,6 +38,7 @@ module Temple
     autoload :Validator,       'temple/filters/validator'
     autoload :OnlyStatic,      'temple/filters/only_static'
     autoload :EmbeddedEngine,  'temple/filters/embedded_engine'
+    autoload :BareEmbeddedEngine,  'temple/filters/embedded_engine'
   end
 
   module HTML
