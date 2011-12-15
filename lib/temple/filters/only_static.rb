@@ -203,29 +203,18 @@ module Temple
       #   # Do some uber-heavy string processing:
       #   new_tree = [:static, os.text.reverse]
       #   # et voila! Correct number of newlines:
-      #   os.recover_newlines(new_tree) #=> [:multi, [:newline], [:static, "cba"], [:newline]]
+      #   os.adjust_newlines(new_tree) #=> [:multi, [:newline], [:static, "cba"], [:newline]]
       # 
-      def recover_newlines(tree=nil)
-        # If nothing was supplied, the solution is trivial:
-        return ([[:newline]] * newlines).unshift( :multi ) if tree.nil?
-        os = IgnoreDynamic.new
-        os.call(tree)
-        if os.newlines >= newlines
-          if os.newlines > newlines
-            #IEEKKKKKKKKKSSSS
-            warn "New tree has more newlines than original one ( #{os.newlines} instead of #{newlines} ). See yourself: \n#{tree.inspect}"
-          end
-          # okay, nothing to do
-          return tree
-        else
-          pre = [0, preceding_newlines - os.preceding_newlines].max
-          suc = [0, newlines - os.newlines - pre ].max
-          multi = [:multi]
-          multi.push( *([[:newline]]*pre) )
-          multi.push( tree )
-          multi.push( *([[:newline]]*suc) )
-          return multi
-        end
+      # @see NewlineAdjuster
+      def adjust_newlines(tree=nil, options={})
+        newline_adjuster(options).call(tree)
+      end
+      
+      # Creates a {NewlineAdjuster} with the settings
+      # of this filter ( number of newlines, preceding
+      # newlines ... )
+      def newline_adjuster(options={})
+        NewlineAdjuster.new({:newlines => newlines, :preceding_newlines => preceding_newlines, :succeding_newlines => succeding_newlines}.merge(options))
       end
       
       def on_newline

@@ -157,9 +157,9 @@ module Temple
           text = ex.text
           if text.size == 0
             # no code.
-            return ex.recover_newlines()
+            return ex.adjust_newlines(nil)
           end
-          return ex.recover_newlines([:code , text])
+          return ex.adjust_newlines([:code , text])
         end
       
       end
@@ -177,7 +177,7 @@ module Temple
           
           ex = OnlyStatic::IgnoreDynamic.new
           ex.call(content)
-          return ex.recover_newlines( tilt_render(tilt_engine, tilt_options, name, content) )
+          return ex.adjust_newlines( tilt_render(tilt_engine, tilt_options, name, content) )
         end
 
       protected
@@ -301,7 +301,7 @@ module Temple
         def call(name, content)
           os = OnlyStatic::Enforce.new
           os.call(content)
-          result = os.recover_newlines( Temple::ERB::Parser.new.call(os.text) )
+          result = os.adjust_newlines( Temple::ERB::Parser.new.call(os.text) )
           return result
         end
       end
@@ -403,7 +403,7 @@ module Temple
         }
       end
       
-      private make_engine
+      protected :make_engine
 
       def on_embed(name, content)
         name = name.to_s

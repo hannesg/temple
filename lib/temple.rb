@@ -39,6 +39,7 @@ module Temple
     autoload :OnlyStatic,      'temple/filters/only_static'
     autoload :EmbeddedEngine,  'temple/filters/embedded_engine'
     autoload :BareEmbeddedEngine,  'temple/filters/embedded_engine'
+    autoload :NewlineAdjuster, 'temple/filters/newline_adjuster'
   end
 
   module HTML
