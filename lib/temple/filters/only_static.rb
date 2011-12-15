@@ -180,6 +180,11 @@ module Temple
       end
 
       def recover_newlines(*tree)
+        tree = tree.compact
+        if tree.empty?
+          # okay nothing was supplied, so simply spit out as many newlines as wished
+          return ([[:newline]] * newlines).unshift( :multi ) 
+        end
         os = IgnoreDynamic.new
         os.call(*tree)
         if os.newlines >= newlines

@@ -149,6 +149,10 @@ module Temple
           ex = OnlyStatic::Enforce.new
           ex.call(*content)
           text = ex.text
+          if text.size == 0
+            # no code.
+            return ex.recover_newlines()
+          end
           return ex.recover_newlines(:code , text)
         end
       
@@ -423,7 +427,6 @@ module Temple
       
       # ruby code is embedded
       register :ruby,       CodeEngine
-      
       register :erb,        ErbEngine
 
     end

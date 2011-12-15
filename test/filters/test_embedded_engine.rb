@@ -219,18 +219,30 @@ describe Temple::Filters::EmbeddedEngine do
     
     end
     
-  end
-  
-  it "should protect expressions in tilt engines" do
-  
-    filter = Temple::Filters::EmbeddedEngine.new do
+    it "should work if the code only consists of newlines" do
     
-      register '__ste__', Temple::Filters::EmbeddedEngine::WrapMaskEngine, Temple::Filters::EmbeddedEngine::TiltEngine
+      content = [:multi, [:newline], [:newline], [:newline] ]
+      result = @code_engine.call("ruby", content)
+      result.should == [:multi, [:newline], [:newline], [:newline]]
     
     end
     
-    filter.call([:embed, '__ste__',[:multi, [:static, "foo\nbar"],[:foo]]]).should == [:multi, [:static, "foo\nbar"],[:foo]]
+  end
   
+  describe Temple::Filters::EmbeddedEngine::WrapMaskEngine do
+  
+    it "should protect expressions in tilt engines" do
+    
+      filter = Temple::Filters::EmbeddedEngine.new do
+      
+        register '__ste__', Temple::Filters::EmbeddedEngine::WrapMaskEngine, Temple::Filters::EmbeddedEngine::TiltEngine
+      
+      end
+      
+      filter.call([:embed, '__ste__',[:multi, [:static, "foo\nbar"],[:foo]]]).should == [:multi, [:static, "foo\nbar"],[:foo]]
+    
+    end
+    
   end
   
 end
