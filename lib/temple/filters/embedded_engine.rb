@@ -1,7 +1,13 @@
 require 'delegate'
 module Temple
   module Filters
-    # Embeds multiple engines
+    # Embeds multiple engines. This class contains only the
+    # implementation and has no default engines registered.
+    # Therefore you should only use this if you want a "bare"
+    # version and register every engine yourself. In all other
+    # cases use {EmbeddedEngine}.
+    #
+    # @see {EmbeddedEngine}
     class BareEmbeddedEngine < Filter
 
       # Yep, we dispatch inside html, too.
@@ -274,7 +280,7 @@ module Temple
       end
 
       # Wraps another engine which only accepts static content.
-      # Tries to recover dynamic content via #{OnlyStatic::MaskDynamic}.
+      # Tries to recover dynamic content via {OnlyStatic::MaskDynamic}.
       # 
       class WrapMaskEngine < WrapEngine
       
@@ -300,8 +306,18 @@ module Temple
         end
       end
 
+      # A filter which embeds many different types of engines.
       # 
-      # @option :engines
+      # @option options [Hash] :engines A hash of engine settings as engine_name => engine_options.
+      #  Possible engine_options:
+      #  - true   - enables this engine ( only useful with :use_default_engines = false )
+      #  - false  - disables this engine ( only useful with :use_default_engines = true )
+      #  - a Hash - these options will be passed to the engine. The options are engine specific.
+      # @option options [Boolean] :use_default_engines Enables or disables default engines.
+      #
+      # @yield {EngineRegisterer}
+      # @see {EngineRegistererModule}
+      #
       #
       def initialize(options = {}, *rest, &block)
         options = options.to_hash
@@ -335,10 +351,13 @@ module Temple
         super(options, *rest)
       end
 
+      # This filters own engine settings.
       def self.own_engines
         @own_engines ||= {}
       end
 
+      # The default engines for this filter.
+      # Usually the engines from it's superclasses.
       def self.default_engines
         @default_engines ||= begin
           if self.superclass.respond_to? :engines
@@ -383,6 +402,8 @@ module Temple
           klass.new(memo)
         }
       end
+      
+      private make_engine
 
       def on_embed(name, content)
         name = name.to_s
@@ -409,6 +430,16 @@ module Temple
     
     # EmbeddedEngine including some default engines.
     # This should be suitable for most cases.
+    #
+    # @example Basic example
+    #   filter = Temple::Filters::EmbeddedEngine.new
+    #   filter.call([:embed, 'ruby', [:static, 'hello world']]) #=> [:code, 'hello world']
+    #
+    # @example Tilt engines
+    #   filter = Temple::Filters::EmbeddedEngine.new
+    #   filter.call([:embed, 'sass', [:
+    # 
+    # @see {BareEmbeddedEngine}
     class EmbeddedEngine < BareEmbeddedEngine
     
       register :markdown,   WrapMaskEngine, TiltEngine

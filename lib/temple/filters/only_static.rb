@@ -169,7 +169,6 @@ module Temple
       attr_reader :succeding_newlines
 
       # Resets {#statics}, {#newlines} and {#text}.
-      # This method is called automatically before each call.
       def reset!
         @statics = []
         @newlines = 0
@@ -182,10 +181,30 @@ module Temple
       end
 
       # The joined text of all encountered statics.
+      #
+      # @example
+      #   os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
+      #   os.call([:multi, [:static, "foo\n"], [:newline], ["static", "bar"]])
+      #   os.text #=> "foo\nbar"
+      #
       def text
         statics.map(&:last).join
       end
 
+      # Tries to match the number of newlines in a tree with
+      # the number of newlines in the tree supplied to the last
+      # call. This is neccessary to keep correct line numberings
+      # for following content.
+      #
+      # @example
+      #   os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
+      #   os.call([:multi, [:newline], [:static, "abc"], [:newline]])
+      #   os.text #=> "abc"
+      #   # Do some uber-heavy string processing:
+      #   new_tree = [:static, os.text.reverse]
+      #   # et voila! Correct number of newlines:
+      #   os.recover_newlines(new_tree) #=> [:multi, [:newline], [:static, "cba"], [:newline]]
+      # 
       def recover_newlines(tree=nil)
         # If nothing was supplied, the solution is trivial:
         return ([[:newline]] * newlines).unshift( :multi ) if tree.nil?
