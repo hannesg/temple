@@ -13,7 +13,7 @@ module Temple
 
       ALLOWED = ['on_multi','on_static','on_newline']
 
-      # Making this a 
+      # Remove anything we don't want in here.
       self.instance_methods.each do |m|
         m = m.to_s
         if m =~ /\Aon_/ and !ALLOWED.include?(m)
@@ -125,7 +125,7 @@ module Temple
       # List of all static expression. They are guaranted to be in the order of their appereance.
       attr_reader :statics
 
-      # Resets {#statics}, {#newlines} and {#text}.
+      # Resets {#statics}.
       def reset!
         @statics = []
       end

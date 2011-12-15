@@ -64,6 +64,15 @@ module Temple
         end
       end
 
+      # @option options [Numeric] :newlines number of newlines the resulting expression should have
+      # @option options [Numeric] :preceding_newlines number of newlines which can be inserted before the content of the expression
+      # @option options [:warn,:raise,false] :on_problem what to do if the resulting expression will have too many newlines
+      def initialize(options = {})
+        super
+        unless options[:newlines].kind_of? Numeric
+          raise ArgumentError, "#{self.class} expects a :newlines option."
+        end
+      end
 
     protected
     
