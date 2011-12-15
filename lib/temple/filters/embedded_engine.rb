@@ -154,12 +154,14 @@ module Temple
         def call(name, content)
           ex = OnlyStatic::Enforce.new
           ex.call(content)
+          nc = NewlineCounter.new
+          nc.call(content)
           text = ex.text
           if text.size == 0
             # no code.
-            return ex.adjust_newlines(nil)
+            return nc.adjust_newlines(nil)
           end
-          return ex.adjust_newlines([:code , text])
+          return nc.adjust_newlines([:code , text])
         end
       
       end
@@ -175,7 +177,7 @@ module Temple
           raise "Cannot find a tilt engine named #{tilt_name}." unless tilt_engine
           tilt_options = options.to_hash
           
-          ex = OnlyStatic::IgnoreDynamic.new
+          ex = NewlineCounter.new
           ex.call(content)
           return ex.adjust_newlines( tilt_render(tilt_engine, tilt_options, name, content) )
         end

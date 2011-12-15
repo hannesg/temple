@@ -40,6 +40,7 @@ module Temple
     autoload :EmbeddedEngine,  'temple/filters/embedded_engine'
     autoload :BareEmbeddedEngine,  'temple/filters/embedded_engine'
     autoload :NewlineAdjuster, 'temple/filters/newline_adjuster'
+    autoload :NewlineCounter,  'temple/filters/newline_counter'
   end
 
   module HTML

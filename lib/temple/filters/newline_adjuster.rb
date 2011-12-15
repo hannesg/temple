@@ -31,9 +31,8 @@ module Temple
           return ([[:newline]] * options[:newlines]).unshift( :multi ) 
         end
         
-        os = OnlyStatic::IgnoreDynamic.new
+        os = NewlineCounter.new
         os.call(expression)
-        
         if os.newlines >= options[:newlines]
           if os.newlines > options[:newlines]
             #TODO: implement cropping:
@@ -44,7 +43,7 @@ module Temple
                 # remove at the head
             #  else
                 # no remove
-                problem{ "Can't adjust given tree to contain #{option[:newlines]} newline(s) ( it has #{os.newlines} )." }
+                problem{ "Can't adjust given tree to contain #{options[:newlines]} newline(s) ( it has #{os.newlines} )." }
                 return expression
             #  end
           end
@@ -52,6 +51,10 @@ module Temple
           return expression
         else
           pre = [0, options[:preceding_newlines] - os.preceding_newlines].max
+          if pre > (options[:newlines] - os.newlines)
+            # would add too many newline
+            pre = (options[:newlines] - os.newlines)
+          end
           suc = [0, options[:newlines] - os.newlines - pre ].max
           multi = [:multi]
           multi.push( *([[:newline]]*pre) )
@@ -65,7 +68,7 @@ module Temple
     protected
     
       def problem
-        case( option[:on_problem] )
+        case( options[:on_problem] )
           when :warn  then warn yield
           when :raise then raise yield
         end

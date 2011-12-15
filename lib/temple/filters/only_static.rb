@@ -11,10 +11,12 @@ module Temple
     # @abstract
     class OnlyStatic < Temple::Filter
 
+      ALLOWED = ['on_multi','on_static','on_newline']
+
       # Making this a 
       self.instance_methods.each do |m|
         m = m.to_s
-        if m =~ /\Aon_/ and m != 'on_multi'
+        if m =~ /\Aon_/ and !ALLOWED.include?(m)
           eval "undef #{m}"
         end
       end
@@ -119,64 +121,17 @@ module Temple
           return multi
         end
       end
-      
-      # A filter which simply ignores dynamics.
-      class IgnoreDynamic < self
-      
-        NEWLINE = "\n"
-      
-      protected
-        def unknown(*tree)
-          return slurp_newlines(tree)
-        end
-        
-        def slurp_newlines(tree, stack = [])
-          if tree[0] == :newline
-            stack << on_newline
-          elsif tree[0] == :dynamic or tree[0] == :code
-            tree[1].lines.each do |line|
-              if line != NEWLINE
-                on_static('')
-              end
-              if line[-1,1] == NEWLINE
-                stack << on_newline
-              end
-            end
-          else
-            tree[1..-1].each do |x|
-              if x.kind_of?(Array)
-                slurp_newlines(x, stack)
-              end
-            end
-          end
-          return case(stack.size)
-            when 0 then nil
-            when 1 then stack[0]
-            else [:multi, *stack]
-          end
-        end
-      
-      end
 
       # List of all static expression. They are guaranted to be in the order of their appereance.
       attr_reader :statics
-      
-      # Number of newline expression.
-      attr_reader :newlines
-      
-      attr_reader :preceding_newlines
-      
-      attr_reader :succeding_newlines
 
       # Resets {#statics}, {#newlines} and {#text}.
       def reset!
         @statics = []
-        @newlines = 0
-        @preceding_newlines = 0
-        @succeding_newlines = 0
       end
       
-      def initialize
+      def initialize(*_)
+        super
         reset!
       end
 
@@ -190,50 +145,14 @@ module Temple
       def text
         statics.map(&:last).join
       end
-
-      # Tries to match the number of newlines in a tree with
-      # the number of newlines in the tree supplied to the last
-      # call. This is neccessary to keep correct line numberings
-      # for following content.
-      #
-      # @example
-      #   os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
-      #   os.call([:multi, [:newline], [:static, "abc"], [:newline]])
-      #   os.text #=> "abc"
-      #   # Do some uber-heavy string processing:
-      #   new_tree = [:static, os.text.reverse]
-      #   # et voila! Correct number of newlines:
-      #   os.adjust_newlines(new_tree) #=> [:multi, [:newline], [:static, "cba"], [:newline]]
-      # 
-      # @see NewlineAdjuster
-      def adjust_newlines(tree=nil, options={})
-        newline_adjuster(options).call(tree)
-      end
-      
-      # Creates a {NewlineAdjuster} with the settings
-      # of this filter ( number of newlines, preceding
-      # newlines ... )
-      def newline_adjuster(options={})
-        NewlineAdjuster.new({:newlines => newlines, :preceding_newlines => preceding_newlines, :succeding_newlines => succeding_newlines}.merge(options))
-      end
-      
-      def on_newline
-        if @statics.empty?
-          @preceding_newlines += 1
-        end
-        @newlines += 1
-        @succeding_newlines += 1
-        return [:newline]
-      end
       
       def on_static(body)
-        @succeding_newlines = 0
         @statics << [:static, body]
         return [:static, body]
       end
       
-      def on_multi(*exps)
-        super.compact
+      def on_newline
+        return [:newline]
       end
       
     end
