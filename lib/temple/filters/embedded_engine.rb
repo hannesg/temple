@@ -303,7 +303,9 @@ module Temple
         def call(name, content)
           os = OnlyStatic::Enforce.new
           os.call(content)
-          result = os.adjust_newlines( Temple::ERB::Parser.new.call(os.text) )
+          nc = NewlineCounter.new
+          nc.call(content)
+          result = nc.adjust_newlines( Temple::ERB::Parser.new.call(os.text) )
           return result
         end
       end
