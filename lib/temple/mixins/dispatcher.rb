@@ -117,7 +117,7 @@ module Temple
         self.class.class_eval %{
           def dispatcher(exp)
             if self.class == #{self.class}
-              #{case_statement(dispatch_tree(*methods), 0, self.respond_to?(:unknow) ? 'unknown' : nil )}
+              #{case_statement(dispatch_tree(*methods), 0, self.respond_to?(:unknown) ? 'unknown' : nil )}
             else
               replace_dispatcher(exp)
             end
