@@ -11,11 +11,19 @@ module Temple
     # @abstract
     class OnlyStatic < Temple::Filter
 
+      # Making this a 
+      self.instance_methods.each do |m|
+        m = m.to_s
+        if m =~ /\Aon_/ and m != 'on_multi'
+          eval "undef #{m}"
+        end
+      end
+      
       # A filter which raises an error whenever a dynamic expression is found.
       class Enforce < self
     
       protected
-        def non_static(content)
+        def unknown(*content)
           raise Temple::InvalidExpression, "Only :multi, :static and :newline expressions are supported, but found #{content.inspect}."
         end
         
@@ -64,29 +72,29 @@ module Temple
         # Normally you would do something with the result of {#call} before
         # feeding it to recover.
         #
-        def recover(*tree)
+        def recover(tree)
           return tree if @expressions.empty?
-          recovered = recover_exp(*tree)
+          recovered = recover_exp(tree)
           recovered = StaticMerger.new.call( recovered ) 
           recovered = MultiFlattener.new.call( recovered ) 
           return recovered
         end
       
       protected
-        def non_static(content)
+        def unknown(*content)
           placeholder = [:static, '']
           @expressions << [ content, placeholder ]
           @statics << placeholder
           return placeholder
         end
         
-        def recover_exp(*tree)
+        def recover_exp(tree)
           if tree[0] == :static
             return recover_string(tree[1])
           else
             return tree.map do |x|
               if x.kind_of? Array
-                recover_exp(*x)
+                recover_exp(x)
               else
                 x
               end
@@ -118,7 +126,7 @@ module Temple
         NEWLINE = "\n"
       
       protected
-        def non_static(tree)
+        def unknown(*tree)
           return slurp_newlines(tree)
         end
         
@@ -168,25 +176,21 @@ module Temple
         @preceding_newlines = 0
         @succeding_newlines = 0
       end
+      
+      def initialize
+        reset!
+      end
 
       # The joined text of all encountered statics.
       def text
         statics.map(&:last).join
       end
 
-      def call(*content)
-        reset!
-        inner_call(*content)
-      end
-
-      def recover_newlines(*tree)
-        tree = tree.compact
-        if tree.empty?
-          # okay nothing was supplied, so simply spit out as many newlines as wished
-          return ([[:newline]] * newlines).unshift( :multi ) 
-        end
+      def recover_newlines(tree=nil)
+        # If nothing was supplied, the solution is trivial:
+        return ([[:newline]] * newlines).unshift( :multi ) if tree.nil?
         os = IgnoreDynamic.new
-        os.call(*tree)
+        os.call(tree)
         if os.newlines >= newlines
           if os.newlines > newlines
             #IEEKKKKKKKKKSSSS
@@ -204,26 +208,6 @@ module Temple
           return multi
         end
       end
-
-    protected
-    
-      def inner_call(*content)
-        type = content[0]
-        case type
-        when :multi then
-          return [:multi, *content[1..-1].map{|token| inner_call(*token) }.compact]
-        when :static then
-          return on_static( content[1] )
-        when :newline then
-          return on_newline
-        else
-          return non_static(content)
-        end
-      end
-      
-      def non_static(content)
-        raise NotImplemented, "#{self.class}.non_static is not implemented. Please do so!"
-      end
       
       def on_newline
         if @statics.empty?
@@ -240,11 +224,15 @@ module Temple
         return [:static, body]
       end
       
+      def on_multi(*exps)
+        super.compact
+      end
+      
     end
 
     def OnlyStatic.new(*_)
       if self == OnlyStatic
-        raise "OnlyStatic is abstract, please use a subclass (#{self})"
+        raise "OnlyStatic is abstract, please use a subclass."
       else
         return super
       end

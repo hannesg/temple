@@ -6,7 +6,7 @@ describe Temple::Filters::OnlyStatic do
     
       os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
       
-      os.call(:multi, [:newline], [:static, "foo"], [:foo]).should == [:multi, [:newline], [:static, "foo"]]
+      os.call([:multi, [:newline], [:static, "foo"], [:foo]]).should == [:multi, [:newline], [:static, "foo"]]
     
     end
     
@@ -14,7 +14,7 @@ describe Temple::Filters::OnlyStatic do
     
       os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
       
-      os.call(:multi, [:newline], [:static, "foo"], [:foo, [:static, "foo"]]).should == [:multi, [:newline], [:static, "foo"]]
+      os.call([:multi, [:newline], [:static, "foo"], [:foo, [:static, "foo"]]]).should == [:multi, [:newline], [:static, "foo"]]
     
     end
     
@@ -24,7 +24,7 @@ describe Temple::Filters::OnlyStatic do
       
         os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
         
-        os.call(:dynamic, "\nfoo\nbar\n")
+        os.call([:dynamic, "\nfoo\nbar\n"])
         
         os.preceding_newlines.should == 1
         os.newlines.should == 3
@@ -36,7 +36,7 @@ describe Temple::Filters::OnlyStatic do
       
         os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
         
-        os.call(:dynamic, "\nfoo\nbar")
+        os.call([:dynamic, "\nfoo\nbar"])
         
         os.preceding_newlines.should == 1
         os.newlines.should == 2
@@ -48,7 +48,7 @@ describe Temple::Filters::OnlyStatic do
       
         os = Temple::Filters::OnlyStatic::IgnoreDynamic.new
         
-        os.call(:dynamic, "\n\n \n\nfoo\nbar")
+        os.call([:dynamic, "\n\n \n\nfoo\nbar"])
         
         os.preceding_newlines.should == 2
         os.newlines.should == 5
@@ -66,7 +66,7 @@ describe Temple::Filters::OnlyStatic do
       os = Temple::Filters::OnlyStatic::Enforce.new
       
       should.raise(Temple::InvalidExpression){
-        os.call(:multi, [:newline], [:static, "foo"], [:foo])
+        os.call([:multi, [:newline], [:static, "foo"], [:foo]])
       }
       
     end
@@ -82,7 +82,7 @@ describe Temple::Filters::OnlyStatic do
       
       data = [:multi, [:newline], [:static, "foo"], [:foo]]
       
-      os.recover( *os.call(*data) ).should == data
+      os.recover( os.call(data) ).should == data
       
     end
     

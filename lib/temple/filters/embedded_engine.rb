@@ -147,13 +147,13 @@ module Temple
 
         def call(name, content)
           ex = OnlyStatic::Enforce.new
-          ex.call(*content)
+          ex.call(content)
           text = ex.text
           if text.size == 0
             # no code.
             return ex.recover_newlines()
           end
-          return ex.recover_newlines(:code , text)
+          return ex.recover_newlines([:code , text])
         end
       
       end
@@ -170,14 +170,14 @@ module Temple
           tilt_options = options.to_hash
           
           ex = OnlyStatic::IgnoreDynamic.new
-          ex.call(*content)
-          return ex.recover_newlines( *tilt_render(tilt_engine, tilt_options, name, content) )
+          ex.call(content)
+          return ex.recover_newlines( tilt_render(tilt_engine, tilt_options, name, content) )
         end
 
       protected
         def tilt_render(tilt_engine, tilt_options, name, content)
           ex = OnlyStatic::Enforce.new
-          ex.call(*content)
+          ex.call(content)
           content = tilt_engine.new(tilt_options){ ex.text }.render
           return [:static, content ]
         end
@@ -197,7 +197,7 @@ module Temple
 
         def tilt_render(tilt_engine, tilt_options, name, content)
           ex = OnlyStatic::Enforce.new
-          ex.call(*content)
+          ex.call(content)
           content, offset = tilt_engine.new(tilt_options){ ex.text }.send(:precompiled, {})
           # Trim preceding and succedding newline characters.
           # They will be reinserted anyway, if they were present.
@@ -280,9 +280,9 @@ module Temple
       
         def call(name, content)
           only_static = OnlyStatic::MaskDynamic.new
-          static_content = only_static.call(*content)
+          static_content = only_static.call(content)
           converted_content = super(name, static_content )
-          return only_static.recover( *converted_content )
+          return only_static.recover( converted_content )
         end
       
       end
@@ -294,8 +294,8 @@ module Temple
       class ErbEngine < TempleEngine
         def call(name, content)
           os = OnlyStatic::Enforce.new
-          os.call(*content)
-          result = os.recover_newlines( *Temple::ERB::Parser.new.call(os.text) )
+          os.call(content)
+          result = os.recover_newlines( Temple::ERB::Parser.new.call(os.text) )
           return result
         end
       end
