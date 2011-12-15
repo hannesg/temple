@@ -4,6 +4,20 @@ describe Temple::Filters::NewlineCounter do
     @nc = Temple::Filters::NewlineCounter.new
   end
 
+  it "should count :code without newlines correctly" do
+    @nc.call( [:code, "foo" ] )
+    @nc.newlines.should == 0
+    @nc.preceding_newlines.should == 0
+    @nc.succeding_newlines.should == 0
+  end
+  
+  it "should count :static without newlines correctly" do
+    @nc.call( [:static, "foo" ] )
+    @nc.newlines.should == 0
+    @nc.preceding_newlines.should == 0
+    @nc.succeding_newlines.should == 0
+  end
+
   it "should count :newlines" do
     @nc.call( [:newline] )
     @nc.newlines.should == 1
