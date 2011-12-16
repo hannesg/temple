@@ -265,6 +265,30 @@ describe Temple::Filters::EmbeddedEngine do
 
     end
 
+    it "should have correct line numbers" do
+
+      erb = <<-ERB.chomp
+Hi I'm an erb source
+This should be line 2 <% __LINE__.should == 2 %>
+Multiline code:
+<%
+  a = 1 + 2
+  b = "\\n"
+  c = "
+"
+%>
+This should be line 10 <% __LINE__.should == 10 %>
+Multiline output:
+<%= "Hallo " +
+    "Welt" %>
+This should be line 14 <% __LINE__.should == 14 %>
+ERB
+      content = [:multi, *erb.lines.map{|line| line[-1,1] == "\n" ? [[:static, line],[:newline]] : [[:static, line]]}.flatten(1) ]
+      result = Temple::Filters::EmbeddedEngine::ErbEngine.new.call('erb', content)
+
+      code = generate(result)
+      Module.new.class_eval(code, '(__TEMPLATE__)',1)
+    end
   end
 
 end
