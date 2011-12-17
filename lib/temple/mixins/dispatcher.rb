@@ -1,6 +1,43 @@
 module Temple
   module Mixins
     # @api private
+    class DispatchTreeNode
+
+      attr_writer :value
+      attr_reader :value
+
+      def initialize
+        @children = Hash.new{|hsh,key| hsh[key] = DispatchTreeNode.new}
+        @value = nil
+      end
+
+      def [](key)
+        @children[key.to_sym]
+      end
+
+      def compile(level = 0)
+        if @children.empty?
+          if @value
+            return ("  "*level) + "return #{@value}( *exp[#{level}..-1] )"
+          else
+            raise "WAAAAAAAAAAA"
+          end
+        end
+        code = [("  "*level) + "case(exp[#{level}])"]
+        @children.each do |key, value|
+          code << ("  " * level) + "when #{key.inspect} then"
+          code << value.compile(level+1)
+        end
+        if @value
+          code << ("  " * level) + "else"
+          code << ("  " * level) + "  return #{@value}( *exp[#{level}..-1] )"
+        end
+        code << ("  "*level) + "end"
+        return code.join "\n"
+      end
+    end
+
+    # @api private
     module CoreDispatcher
       def on_multi(*exps)
         multi = [:multi]
@@ -51,46 +88,35 @@ module Temple
 
       private
 
-      def case_statement(types, level)
-        code = "case exp[#{level}]\n"
-        types.each do |name, method|
-          code << "when #{name.to_sym.inspect}\n" <<
-            (Hash === method ? case_statement(method, level + 1) : "#{method}(*(exp[#{level+1}..-1]))\n")
-        end
-        code << "else\nexp\nend\n"
-      end
-
       def dispatcher(exp)
         replace_dispatcher(exp)
       end
 
       def replace_dispatcher(exp)
-        types = {}
-        self.class.instance_methods.each do |method|
-          next if method.to_s !~ /^on_(.*)$/
-          method_types = $1.split('_')
-          (0...method_types.size).inject(types) do |tmp, i|
-            unless Hash === tmp
-              conflict = method_types[0...i].join('_')
-              raise "Temple dispatcher '#{method}' conflicts with 'on_#{conflict}'"
-            end
-            if i == method_types.size - 1
-              tmp[method_types[i]] = method
-            else
-              tmp[method_types[i]] ||= {}
-            end
-          end
+        types = DispatchTreeNode.new
+        dispatched_methods.each do |method|
+          method_types = method.split('_')
+          method_types.shift # remove first
+          method_types.inject(types){|tmp, type| tmp[type.to_sym] }.value = method
         end
         self.class.class_eval %{
           def dispatcher(exp)
             if self.class == #{self.class}
-              #{case_statement(types, 0)}
+              #{types.compile(0)}
+              return exp
             else
               replace_dispatcher(exp)
             end
           end
         }
         dispatcher(exp)
+      end
+
+      # @api private
+      # returns the methods which will be dispatched
+      def dispatched_methods
+        rx = /^on(_[a-z]+)*$/
+        self.methods(true).map(&:to_s).select(&rx.method(:=~))
       end
     end
 
