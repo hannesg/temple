@@ -20,7 +20,8 @@ module Temple
           if @value
             return ("  "*level) + "return #{@value}( *exp[#{level}..-1] )"
           else
-            raise "WAAAAAAAAAAA"
+            # We dispatch nothing:
+            return ""
           end
         end
         code = [("  "*level) + "case(exp[#{level}])"]
@@ -120,7 +121,55 @@ module Temple
       end
     end
 
-    # @api private
+    # @api public
+    #
+    # Implements a compatible call-method
+    # based on the including classe's methods.
+    #
+    # It uses every method starting with
+    # "on" and uses the rest of the method
+    # name as prefix of the expression it
+    # will receive. So, if a dispatcher
+    # has a method named "on_x", this method
+    # will be called with arg0,..,argN
+    # whenever an expression like [:x, arg0,..,argN ]
+    # is encountered.
+    #
+    # This works with longer prefixes, too.
+    # For example a method named "on_y_z"
+    # will be called whenever an expression
+    # like [:y, :z, .. ] is found. Furthermore,
+    # if additionally a method named "on_y"
+    # is present, it will be called when an
+    # expression starts with :y but then does
+    # not contain with :z. This way a
+    # dispachter can implement namespaces.
+    #
+    # @note
+    #  Processing does not reach into unknown
+    #  expression types by default.
+    #
+    # @example
+    #   class MyAwesomeDispatch
+    #     include Temple::Mixins::Dispatcher
+    #     def on_awesome(thing) # keep awesome things
+    #       return [:awesome, thing]
+    #     end
+    #     def on_boring(thing) # make boring things awesome
+    #       return [:awesome, thing+" with bacon"]
+    #     end
+    #     def on(type,*args) # unknown stuff is boring too
+    #       return [:awesome, 'just bacon']
+    #     end
+    #   end
+    #   filter = MyAwesomeDispatch.new
+    #   # Boring things are converted:
+    #   filter.call([:boring, 'egg']) #=> [:awesome, 'egg with bacon']
+    #   # Unknown things too:
+    #   filter.call([:foo]) #=> [:awesome, 'just bacon']
+    #   # Known but not boring things won't be touched:
+    #   filter.call([:awesome, 'chuck norris']) #=>[:awesome, 'chuck norris']
+    #
     module Dispatcher
       include CompiledDispatcher
       include CoreDispatcher
